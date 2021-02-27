@@ -1,4 +1,5 @@
-import { createContext, ReactNode, useState } from 'react';
+import { createContext, ReactNode, useEffect, useState } from 'react';
+import Cookies from 'js-cookie'
 import challenges from '../../challenges.json'
 
 interface Challenge {
@@ -21,18 +22,31 @@ interface ChallengesContextData {
 
 interface ChallengesProviderProps {
     children: ReactNode
+    level: number;
+    currentExperience: number;
+    challengersCompleted: number;
 }
 
 export const ChallengesContext = createContext({} as ChallengesContextData)
 
-export function ChallengesProvider({ children }: ChallengesProviderProps) {
-    const [level, setLevel] = useState(1)
-    const [currentExperience, setCurrentExperience] = useState(0)
-    const [challengersCompleted, setChallengersCompleted] = useState(0)
+export function ChallengesProvider({ children, ...rest }: ChallengesProviderProps) {
+    const [level, setLevel] = useState(rest.level ?? 1)
+    const [currentExperience, setCurrentExperience] = useState(rest.currentExperience ?? 0)
+    const [challengersCompleted, setChallengersCompleted] = useState(rest.challengersCompleted ?? 0)
 
     const [activeChallenge, setActiveChallenge] = useState(null)
 
     const experienceToNextLevel = Math.pow((level + 1) * 4, 2)
+
+    useEffect(() => {
+        Notification.requestPermission()
+    }, [])
+
+    useEffect(() => {
+        Cookies.set('level', String(level))
+        Cookies.set('currentExperience', String(currentExperience))
+        Cookies.set('challengersCompleted', String(challengersCompleted))
+    }, [level, currentExperience, challengersCompleted])
 
     function levelUp() {
         setLevel(level + 1)
@@ -43,6 +57,14 @@ export function ChallengesProvider({ children }: ChallengesProviderProps) {
         const challenge = challenges[randomChallengeIndex]
 
         setActiveChallenge(challenge)
+
+        new Audio('/notification.mp3').play()
+
+        if (Notification.permission === 'granted') {
+            new Notification('Novo desafio 🎉', {
+                body: `Valendo ${challenge.amount} xp`
+            })
+        }
     }
 
     function resetChallenge() {
